@@ -25,6 +25,7 @@ import signal
 import sys
 import threading
 import time
+import requests
 
 from PIL import Image, ImageDraw, ImageFont
 from picamera import PiCamera
@@ -266,6 +267,27 @@ class Animator(Service):
     def update_joy_score(self, joy_score):
         self.submit(joy_score)
 
+def debounce(s):
+    """Decorator ensures function that can only be called once every `s` seconds.
+    """
+    def decorate(f):
+        t = None
+
+        def wrapped(*args, **kwargs):
+            nonlocal t
+            t_ = time.time()
+            if t is None or t_ - t >= s:
+                result = f(*args, **kwargs)
+                t = time.time()
+                return result
+        return wrapped
+    return decorate
+
+@debounce(3)
+def sendJoy(joy_score):
+    logger.info('Sending request')
+    if joy_score != 0.0:
+        requests.get('https://joyjoy.free.beeceptor.com', params=[('score', joy_score)])
 
 def joy_detector(num_frames, preview_alpha, image_format, image_folder,
                  enable_streaming, streaming_bitrate, mdns_name):
@@ -318,6 +340,8 @@ def joy_detector(num_frames, preview_alpha, image_format, image_folder,
             photographer.update_faces((faces, frame_size))
             joy_score = joy_moving_average.send(average_joy_score(faces))
             animator.update_joy_score(joy_score)
+            # Send http request
+            sendJoy(joy_score)
             event = joy_threshold_detector.send(joy_score)
             if event == 'high':
                 logger.info('High joy detected.')

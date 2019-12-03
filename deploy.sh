@@ -22,3 +22,6 @@ echo "--------------Deployment completed"
 
 # Show logs
 # sudo journalctl -u joy_aggregator -f
+# systemctl --type=service
+# sudo shutdown -h now
+# sudo shutdown -r now
