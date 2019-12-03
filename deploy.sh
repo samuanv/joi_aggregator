@@ -7,7 +7,7 @@ fi
 
 ssh pi@$RASPBERRY_IP 'rm -r ~/joy_aggregator'
 
-scp -pr . pi@$RASPBERRY_IP:~/joy_aggregator
+scp -pr ./joy_aggregator_service pi@$RASPBERRY_IP:~/joy_aggregator
 
 echo "--------------Stopping joy_aggregator"
 ssh pi@$RASPBERRY_IP 'sudo systemctl stop joy_aggregator'
