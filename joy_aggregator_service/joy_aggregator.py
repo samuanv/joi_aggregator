@@ -26,7 +26,9 @@ import sys
 import threading
 import time
 import requests
+import json
 
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from picamera import PiCamera
 
@@ -54,6 +56,8 @@ BEEP_SOUND = ('E6q', 'C6q')
 FONT_FILE = '/usr/share/fonts/truetype/freefont/FreeSans.ttf'
 
 BUZZER_GPIO = 22
+
+JOY_URL = 'https://joyjoy2.free.beeceptor.com'
 
 @contextlib.contextmanager
 def stopwatch(message):
@@ -283,11 +287,27 @@ def debounce(s):
         return wrapped
     return decorate
 
+# TODO: Learn Python
+def getJSONFacesScore(faces):
+    response = []
+    for i in range(len(faces)):
+        logger.info('Joy score:')
+        logger.info(faces[i].joy_score)
+        response.append(faces[i].joy_score)
+    return response
+
 @debounce(3)
-def sendJoy(joy_score):
-    logger.info('Sending request')
+def sendJoy(joy_score, faces):
     if joy_score != 0.0:
-        requests.get('https://joyjoy.free.beeceptor.com', params=[('score', joy_score)])
+        logger.info('Sending request')
+        now = datetime.now()
+        joy_scores = getJSONFacesScore(faces)
+        body = {
+            'average_joy_score': joy_score,
+            'joy_scores': joy_scores,
+            'datetime': datetime.timestamp(now)
+            }
+        requests.post(JOY_URL, data=body)
 
 def joy_detector(num_frames, preview_alpha, image_format, image_folder,
                  enable_streaming, streaming_bitrate, mdns_name):
@@ -341,7 +361,7 @@ def joy_detector(num_frames, preview_alpha, image_format, image_folder,
             joy_score = joy_moving_average.send(average_joy_score(faces))
             animator.update_joy_score(joy_score)
             # Send http request
-            sendJoy(joy_score)
+            sendJoy(joy_score, faces)
             event = joy_threshold_detector.send(joy_score)
             if event == 'high':
                 logger.info('High joy detected.')
